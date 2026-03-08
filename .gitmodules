@@ -1,0 +1,3 @@
+[submodule "sw"]
+	path = sw
+	url = https://github.com/Nacholazabal/arty-z20-hdmi-fw.git

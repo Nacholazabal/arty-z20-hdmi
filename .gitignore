@@ -1,0 +1,42 @@
+# ── Vivado project / build artifacts ────────────────────────────────────────
+*.cache/
+*.runs/
+*.ip_user_files/
+*.sim/
+*.hw/
+*.xpr
+*.jou
+*.log
+*.str
+*.pb
+*.dcp
+*.rpt
+*.rpx
+webtalk/
+*.wdf
+*.wpc
+.Xil/
+
+# ── SDK / Eclipse workspace ──────────────────────────────────────────────────
+*.sdk/.metadata/
+*.sdk/webtalk/
+*.sdk/RemoteSystemsTempFiles/
+*.sdk/**/_bsp/
+*.sdk/**/Debug/
+*.sdk/**/Release/
+*.sdk/**/*.elf
+*.sdk/**/*.o
+*.sdk/**/*.d
+
+# ── OS / editor noise ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ── Release binaries tracked explicitly — keep them ──────────────────────────
+!release/*.bit
+!release/*.elf
