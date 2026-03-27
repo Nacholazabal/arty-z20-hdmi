@@ -2,7 +2,10 @@
 ## To use it in a project:
 ## - uncomment the lines corresponding to used pins
 ## - rename the used ports (in each line, after get_ports) according to the top level signal names in the project
-
+set_clock_groups -asynchronous \
+  -group [get_clocks clk_fpga_0] \
+  -group [get_clocks clk_fpga_1] \
+  -group [get_clocks axi_dynclk_0_PXL_CLK]
 ## Clock signal
 
 #set_property -dict { PACKAGE_PIN H16    IOSTANDARD LVCMOS33 } [get_ports { clk }]; #IO_L13P_T2_MRCC_35 Sch=SYSCLK

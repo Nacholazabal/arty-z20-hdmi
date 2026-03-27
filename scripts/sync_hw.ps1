@@ -15,14 +15,14 @@
 
 .PARAMETER Source
     Path to the messy passthrough Vivado project folder.
-    Default: C:\Users\nacho\Desktop\Postgrado\FPGA\arty-z20-hdmi-passthrough
+    Default: C:\Users\nacho\Desktop\Postgrado\FPGA\HDMI_overlay
 
 .EXAMPLE
     .\sync_hw.ps1
     .\sync_hw.ps1 -Source "D:\projects\arty-z20-hdmi-passthrough"
 #>
 param(
-    [string]$Source = "C:\Users\nacho\Desktop\Postgrado\FPGA\arty-z20-hdmi-passthrough"
+    [string]$Source = "C:\Users\nacho\Desktop\Postgrado\FPGA\HDMI_overlay"
 )
 
 # Resolve destination to this script's parent folder (repo root)
@@ -38,9 +38,9 @@ if (-not (Test-Path $Source)) {
     exit 1
 }
 
-$srcSrcs = Join-Path $Source "arty-z20-hdmi-passthrough.srcs"
-$srcImpl = Join-Path $Source "arty-z20-hdmi-passthrough.runs\impl_1"
-$srcSdk  = Join-Path $Source "arty-z20-hdmi-passthrough.sdk"
+$srcSrcs = Join-Path $Source "HDMI_overlay.srcs"
+$srcImpl = Join-Path $Source "HDMI_overlay.runs\impl_1"
+$srcSdk  = Join-Path $Source "HDMI_overlay.sdk"
 
 foreach ($p in @($srcSrcs, $srcImpl, $srcSdk)) {
     if (-not (Test-Path $p)) {
@@ -76,7 +76,7 @@ $bdFiles = Get-ChildItem -Path "$srcSrcs\sources_1\bd" `
 Sync-Files -Files $bdFiles.FullName -DestDir "$Dest\hw\bd" -Label "hw/bd"
 
 # ── 4. HDF export (top-level .hdf in sdk root) ───────────────────────────────
-$hdfFile = Get-ChildItem -Path $srcSdk -Include "*.hdf" -File -ErrorAction SilentlyContinue |
+$hdfFile = Get-ChildItem -Path "$srcSdk\*" -Include "*.hdf" -File -ErrorAction SilentlyContinue |
            Select-Object -First 1
 if ($hdfFile) {
     Sync-Files -Files @($hdfFile.FullName) -DestDir "$Dest\hw\export" -Label "hw/export"
@@ -85,7 +85,7 @@ if ($hdfFile) {
 }
 
 # ── 5. Bitstream (.bit from impl_1) ──────────────────────────────────────────
-$bitFile = Get-ChildItem -Path $srcImpl -Include "*.bit" -File -ErrorAction SilentlyContinue |
+$bitFile = Get-ChildItem -Path "$srcImpl\*" -Include "*.bit" -File -ErrorAction SilentlyContinue |
            Select-Object -First 1
 if ($bitFile) {
     Sync-Files -Files @($bitFile.FullName) -DestDir "$Dest\release" -Label "release"
