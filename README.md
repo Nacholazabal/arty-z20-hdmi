@@ -1,138 +1,85 @@
-# Arty Z7-20 — HDMI Pass-Through
+# Arty Z7-20 HDMI Subtitle Overlay
 
-A clean, self-contained repository for the **Arty Z7-20** HDMI pass-through design — hardware and firmware sources for an FPGA-based HDMI capture and re-transmission system running on the Zynq-7000 SoC.
+FPGA and firmware sources for a thesis platform that captures HDMI video on the **Arty Z7-20**, stores frames in PS DDR, and overlays subtitles in real time before retransmitting the processed stream over HDMI.
 
-The design captures a live HDMI input signal through the FPGA fabric, buffers the frames in DDR3 memory via the PS7 (ARM) subsystem, and re-transmits the video over HDMI output. A lightweight bare-metal firmware running on the ARM Cortex-A9 manages the video pipeline and exposes a UART control interface.
+This repository showcases the hardware and system-integration work behind the project: extending the original HDMI pass-through pipeline into a subtitle-capable video path with custom AXI-Stream logic, BRAM-backed subtitle storage, and software-visible control registers.
 
-> **Based on** [Digilent/Arty-Z7-20-hdmi-in](https://github.com/Digilent/Arty-Z7-20-hdmi-in) — heavily modified to fix compatibility issues and extend functionality.
+## Hardware Focus
 
----
+The hardware side of this project goes beyond a simple pass-through demo. The current design includes:
 
-## Repository layout
+- A custom `axis_video_overlay_rect` AXI4-Stream video IP that inserts a subtitle bar and glyph pixels into the outgoing stream.
+- A custom `subtitle_mask_mem` true dual-port BRAM IP used as a 1 bpp subtitle bitmap store, readable from the pixel domain and writable from the PS through AXI.
+- An `axi_bram_ctrl` integration that exposes subtitle bitmap memory to software at a dedicated address range.
+- A revised block design that places the overlay in the live HDMI pipeline between frame-buffer readout and HDMI output.
+- Exported hardware artifacts and the custom Verilog modules so the design can be inspected and extended from this repository.
 
-```
+## Repository Layout
+
+```text
 arty-z20-hdmi/
-├── hw/
-│   ├── src/                 VHDL/Verilog top-level wrappers
-│   ├── constraints/         Xilinx Design Constraint (.xdc) files
-│   ├── bd/                  Vivado block design (.bd)
-│   └── export/
-│         hdmi_in_wrapper.hdf   Hardware definition file (for SDK/Vitis)
-│
-├── sw/                      Firmware source (git submodule → arty-z20-hdmi-fw)
-│
-├── release/
-│     hdmi_in_wrapper.bit    Bitstream (pre-built, tracked via Git LFS)
-│     Arty-Z7-20-hdmi-in.elf Application ELF (pre-built, tracked via Git LFS)
-│
-├── scripts/
-│     sync_hw.ps1            Copies updated HW sources from Vivado project
-│
-└── .gitattributes           Git LFS patterns for binary artifacts
+|-- hw/
+|   |-- bd/                  Vivado block design export
+|   |-- constraints/         Board constraints
+|   |-- export/              Hardware definition export (.hdf)
+|   |-- ip/                  Custom IP created for this project
+|   |-- src/                 Top-level HDL wrapper
+|   `-- tcl/                 Reserved for reproducible HW scripts
+|-- sw/                      Firmware source (submodule)
+|-- docs/                    Design notes and project documentation
+|-- release/                 Prebuilt bitstream / ELF artifacts
 ```
 
----
+## Custom IP Included In This Repo
 
-## Quick start — programming the board
+- `hw/ip/axis_video_overlay_rect/`
+  Verilog source for the AXI4-Stream overlay engine with AXI4-Lite control registers for subtitle position, bar size, bar color, text color, enable, and SOF-safe update status.
+- `hw/ip/subtitle_mask_mem/`
+  Verilog source for the dual-port subtitle bitmap memory. Port A is read by the overlay in the pixel clock domain, while Port B is exposed to software through `axi_bram_ctrl`.
 
-Pre-built binaries are included in `release/` so you can try the design without rebuilding anything.
+## Hardware Architecture
 
-### Requirements
-- Arty Z7-20 development board
-- Xilinx SDK **2018.2** (or Vitis with legacy SDK support)
-- HDMI source connected to the **HDMI In** port
-- HDMI display connected to the **HDMI Out** port
-- USB cable for UART (115200 baud, 8N1)
+The active hardware pipeline is:
 
-### Steps
+```text
+HDMI IN
+  -> dvi2rgb
+  -> v_vid_in_axi4s
+  -> AXI VDMA (write to DDR)
+  -> AXI VDMA (read from DDR)
+  -> axis_video_overlay_rect
+  -> v_axi4s_vid_out
+  -> rgb2dvi
+  -> HDMI OUT
+```
 
-1. Clone the repository including the firmware submodule and LFS objects:
+The overlay block reads subtitle pixels from BRAM-backed mask memory and blends them over a configurable subtitle bar. The PS can update both the overlay registers and the subtitle bitmap through memory-mapped interfaces, which makes the platform suitable for experimenting with subtitle generation, placement, and synchronization.
 
-   ```bash
-   git clone --recurse-submodules https://github.com/Nacholazabal/arty-z20-hdmi
-   cd arty-z20-hdmi
-   git lfs pull
-   ```
+## Memory-Mapped Hardware Interfaces
 
-2. Open Xilinx SDK / Vitis and create a new hardware platform using `release/hdmi_in_wrapper.bit` is not needed here — the ELF already contains the application.
+From the exported block design currently tracked in `hw/`:
 
-3. Use the **Xilinx SDK Program FPGA** wizard (or `xsdb`) to program both the bitstream and the ELF onto the board:
+- `0x40000000` - subtitle bitmap BRAM window via `axi_bram_ctrl_0`
+- `0x41200000` - `axi_gpio_video`
+- `0x43000000` - `axi_vdma_0`
+- `0x43C00000` - `axi_dynclk_0`
+- `0x43C10000` - `v_tc_0`
+- `0x43C20000` - `v_tc_1`
+- `0x43C30000` - `axis_video_overlay_rect` control registers
 
-   ```
-   Bitstream : release/hdmi_in_wrapper.bit
-   ELF       : release/Arty-Z7-20-hdmi-in.elf
-   ```
-
-4. Connect a serial terminal (115200 8N1) to the board's USB-UART port. The firmware will print a menu on boot and respond to single-character commands (see the [firmware README](sw/README.md) for the full command reference).
-
----
-
-## Editing the hardware
-
-All hardware source files required to reproduce and modify the design are checked in under `hw/`. For full context on the block design, IP cores, and Vivado workflow, the [upstream Digilent repository](https://github.com/Digilent/Arty-Z7-20-hdmi-in) is the best reference — this repo uses the same Vivado project structure.
+## Working With The Hardware
 
 ### Toolchain
-- **Vivado 2018.2** (project was created and is tested against this version)
-- Git LFS (for committing bitstream and HDF artifacts)
 
-### Workflow
+- Vivado 2018.2/2018.3-era project flow
+- Arty Z7-20 board
+- Git LFS for tracked binary outputs in `release/`
 
-1. Open your Vivado project and make your changes.
-2. Run Synthesis → Implementation → Generate Bitstream.
-3. Export the hardware definition: **File → Export → Export Hardware** (include bitstream).
-4. From a PowerShell terminal at the repo root, run the sync script to copy the updated sources back into the clean repo:
+## Documentation
 
-   ```powershell
-   .\scripts\sync_hw.ps1
-   ```
-
-   The script copies:
-
-   | Source (Vivado project)                        | Destination          |
-   |------------------------------------------------|----------------------|
-   | `*.srcs/sources_1/imports/hdl/*.vhd, *.v`     | `hw/src/`            |
-   | `*.srcs/constrs_1/**/*.xdc`                   | `hw/constraints/`    |
-   | `*.srcs/sources_1/bd/**/*.bd`                 | `hw/bd/`             |
-   | `*.sdk/hdmi_in_wrapper.hdf`                   | `hw/export/`         |
-   | `*.runs/impl_1/*.bit`                         | `release/`           |
-
-5. Review the diff and commit:
-
-   ```bash
-   git diff --stat
-   git add hw/ release/
-   git commit -m "hw: describe your change"
-   git push
-   ```
-
----
-
-## Editing the firmware
-
-The firmware lives in `sw/`, which is a standalone git repository ([arty-z20-hdmi-fw](https://github.com/Nacholazabal/arty-z20-hdmi-fw)) tracked here as a submodule. See the [firmware README](sw/README.md) for build instructions and the UART command reference.
-
-After making changes inside `sw/`, commit and push there, then update the submodule pointer in this repo:
-
-```bash
-cd sw
-git add .
-git commit -m "fw: describe your change"
-git push
-
-cd ..
-git add sw
-git commit -m "bump fw submodule"
-git push
-```
-
----
+- Hardware design notes: [docs/HARDWARE_DESIGN.md](docs/HARDWARE_DESIGN.md)
+- Firmware notes: [sw/README.md](sw/README.md)
 
 ## Credits
 
-This project is based on the original **[Digilent Arty-Z7-20-hdmi-in](https://github.com/Digilent/Arty-Z7-20-hdmi-in)** demo by [Digilent, Inc.](https://digilent.com), which demonstrates HDMI input/output and UART control on the Arty Z7-20 board. The hardware design and firmware were substantially reworked to resolve compatibility issues and adapt the project to our specific requirements.
-
----
-
-## License
-
-Hardware sources and firmware are derived from Digilent's open-source demo. Please refer to the [upstream repository](https://github.com/Digilent/Arty-Z7-20-hdmi-in) for the original license terms.
+This work builds on Digilent's **[Arty-Z7-20 HDMI In demo](https://github.com/Digilent/Arty-Z7-20-hdmi-in)** as an initial reference for HDMI capture/output on the board. The repository here tracks the thesis-specific hardware evolution on top of that foundation, especially the subtitle overlay pipeline, custom IP blocks, BRAM integration, and associated control path.

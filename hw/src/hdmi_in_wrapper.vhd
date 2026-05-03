@@ -1,8 +1,8 @@
 --Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.
 ----------------------------------------------------------------------------------
---Tool Version: Vivado v.2018.2 (win64) Build 2258646 Thu Jun 14 20:03:12 MDT 2018
---Date        : Wed Aug 21 13:33:08 2019
---Host        : WK142 running 64-bit major release  (build 9200)
+--Tool Version: Vivado v.2018.3 (win64) Build 2405991 Thu Dec  6 23:38:27 MST 2018
+--Date        : Mon Mar 30 14:39:03 2026
+--Host        : Atlas running 64-bit major release  (build 9200)
 --Command     : generate_target hdmi_in_wrapper.bd
 --Design      : hdmi_in_wrapper
 --Purpose     : IP block netlist
@@ -51,17 +51,6 @@ end hdmi_in_wrapper;
 architecture STRUCTURE of hdmi_in_wrapper is
   component hdmi_in is
   port (
-    TMDS_clk_p : in STD_LOGIC;
-    TMDS_clk_n : in STD_LOGIC;
-    TMDS_data_p : in STD_LOGIC_VECTOR ( 2 downto 0 );
-    TMDS_data_n : in STD_LOGIC_VECTOR ( 2 downto 0 );
-    hdmi_hpd_tri_o : out STD_LOGIC_VECTOR ( 0 to 0 );
-    DDC_scl_i : in STD_LOGIC;
-    DDC_scl_o : out STD_LOGIC;
-    DDC_scl_t : out STD_LOGIC;
-    DDC_sda_i : in STD_LOGIC;
-    DDC_sda_o : out STD_LOGIC;
-    DDC_sda_t : out STD_LOGIC;
     DDR_cas_n : inout STD_LOGIC;
     DDR_cke : inout STD_LOGIC;
     DDR_ck_n : inout STD_LOGIC;
@@ -86,7 +75,18 @@ architecture STRUCTURE of hdmi_in_wrapper is
     TMDS_1_clk_p : out STD_LOGIC;
     TMDS_1_clk_n : out STD_LOGIC;
     TMDS_1_data_p : out STD_LOGIC_VECTOR ( 2 downto 0 );
-    TMDS_1_data_n : out STD_LOGIC_VECTOR ( 2 downto 0 )
+    TMDS_1_data_n : out STD_LOGIC_VECTOR ( 2 downto 0 );
+    TMDS_clk_p : in STD_LOGIC;
+    TMDS_clk_n : in STD_LOGIC;
+    TMDS_data_p : in STD_LOGIC_VECTOR ( 2 downto 0 );
+    TMDS_data_n : in STD_LOGIC_VECTOR ( 2 downto 0 );
+    hdmi_hpd_tri_o : out STD_LOGIC_VECTOR ( 0 to 0 );
+    DDC_scl_i : in STD_LOGIC;
+    DDC_scl_o : out STD_LOGIC;
+    DDC_scl_t : out STD_LOGIC;
+    DDC_sda_i : in STD_LOGIC;
+    DDC_sda_o : out STD_LOGIC;
+    DDC_sda_t : out STD_LOGIC
   );
   end component hdmi_in;
   component IOBUF is
